@@ -2,6 +2,93 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import io
+import contextlib
+import warnings
+
+#try these exchange suffixes so the user doesn't have to type it always
+SUFFIX_CANDIDATES = [
+    # --- Core markets ---
+    "",       # USA (default: Nasdaq / NYSE / AMEX)
+    ".L",     # UK - London Stock Exchange
+    ".DE",    # Germany - XETRA / Frankfurt
+    ".AS",    # Netherlands - Euronext Amsterdam
+    ".PA",    # France - Euronext Paris
+    ".MI",    # Italy - Borsa Italiana (Milan)
+    ".IR",    # Ireland - Euronext Dublin
+    ".BR",    # Belgium - Euronext Brussels
+    ".LS",    # Portugal - Euronext Lisbon
+    ".SW",    # Switzerland - SIX Swiss Exchange
+    ".ST",    # Sweden - Stockholm
+    ".CO",    # Denmark - Copenhagen
+    ".HE",    # Finland - Helsinki
+    ".OL",    # Norway - Oslo
+    ".VI",    # Austria - Vienna
+    ".MA",    # Spain - Madrid
+    ".WA",    # Poland - Warsaw
+
+    # --- Americas ---
+    ".TO",    # Canada - Toronto
+    ".V",     # Canada - TSX Venture
+    ".MX",    # Mexico - Bolsa Mexicana
+    ".SA",    # Brazil - B3 (São Paulo)
+
+    # --- Asia-Pacific ---
+    ".T",     # Japan - Tokyo
+    ".HK",    # Hong Kong
+    ".TW",    # Taiwan
+    ".AX",    # Australia - ASX
+    ".NZ",    # New Zealand
+    ".KS",    # South Korea - KOSPI
+    ".KQ",    # South Korea - KOSDAQ
+    ".SI",    # Singapore
+    ".JK",    # Indonesia
+    ".BK",    # Thailand - Bangkok
+    ".IN",    # India - NSE/BSE (varies, sometimes not consistent)
+
+    # --- Middle East & Africa ---
+    ".IL",    # Israel - Tel Aviv
+    ".IS",    # Turkey - Istanbul
+    ".SR",    # Saudi Arabia - Tadawul
+    ".QA",    # Qatar
+    ".AE",    # UAE - Dubai/Abu Dhabi
+
+    # --- China (less common for ETFs on Yahoo) ---
+    ".SS",    # Shanghai A-shares
+    ".SZ",    # Shenzhen A-shares
+]
+
+#try different Exchange Suffixes until a ticker works. Returns the first ticker that works or None if none is found
+def find_ticker(symbol: str, start:str, end:str) -> str | None:
+    has_suffix = any(symbol.endswith(suffix) for suffix in SUFFIX_CANDIDATES)
+    candidate = [symbol] if has_suffix else [symbol + suffix for suffix in SUFFIX_CANDIDATES]
+
+    for suffix in SUFFIX_CANDIDATES:
+        candidate = f"{symbol}{suffix}"
+        data = _silent_download(candidate, start, end)
+        if not data.empty and "Close" in data:
+            return candidate
+    return None
+
+ #downloads data from YahooFinance without printing messages like  '1 Failed download: ...' and without FutureWarning/stacktrace
+def _silent_download(ticker: str, start: str, end: str) -> pd.DataFrame:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # ignore FutureWarning etc.
+        buf_out, buf_err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(buf_out), contextlib.redirect_stderr(buf_err):
+            try:
+                # progress=False avoids bar, threads=False reduce noise
+                return yf.download(
+                    ticker, start=start, end=end,
+                    auto_adjust=True, progress=False, threads=False
+                )
+            except (KeyError, ValueError) as e:
+                # common data-shape/column issues -> return empty silently
+                return pd.DataFrame()
+            except Exception as e:
+                # let unexpected errors arise
+                raise
+
 
 def _ensure_series(x):
     #return a 1 Dimension Panda Series even if x is a Dataframe with a single column.
