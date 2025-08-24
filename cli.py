@@ -2,6 +2,7 @@
 import typer
 from src.data import download_prices, find_ticker
 import pandas as pd
+from src.io_utils import save_csv, save_period_all_tickers
 
 app = typer.Typer(help="ETF Screener CLI")
 
@@ -49,6 +50,11 @@ def fetch( #Retrieve necessary infos for downloading data
                 "Volume": volumes[i]
             })
             typer.echo(df.head().to_string())
+
+    saved_paths = save_period_all_tickers(prices, volumes, start, end, out_base="data/output")
+    typer.secho("\nSaved per-ticker period bundles:", fg=typer.colors.GREEN)
+    for p in saved_paths:
+        typer.echo(f"- {p}")
 
 @app.command()
 def hello():
