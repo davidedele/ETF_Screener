@@ -6,10 +6,10 @@ def ensure_dir(path: str | Path) -> Path:
     p.mkdir(parents=True, exist_ok=True)
     return p
 
-def save_csv(df: pd.DataFrame, out_dir: str | Path, filename: str) -> Path:
-    out_path = ensure_dir(out_dir) / filename
-    df.to_csv(out_path, index=True)
-    return out_path
+def save_csv(df: pd.DataFrame, filename: str) -> None: #Save a DataFrame to CSV, creating directories if needed.
+    import os
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    df.to_csv(filename, index=False)
 
 def load_csv(path: str) -> pd.DataFrame: #loads CSV file into a DataFrame
     p = Path(path)
