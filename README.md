@@ -1,9 +1,8 @@
 # ETF Screener
 
-This is a small project I built to combine two things I care about:  
-my passion for investing and my interest in coding.  
+This is a small project I built to combine two things I care about: investing and coding.  
 
-It's been a while since I started investing in ETFs and I decided to try creating something that could be useful in my day-to-day investing, helping me evaluate and filter ETFs quickly.
+It's been a while since I started investing in ETFs and I decided to try creating something that could be useful in my day-to-day investing, helping me evaluate and filter ETFs quickly. I hope this tool will eventually be useful to me and others.
 
 > Note: this project is still a work in progress.  
 > I'm building it step by step while learning and experimenting, so not all the features described below are fully working yet.
