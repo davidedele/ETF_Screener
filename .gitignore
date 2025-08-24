@@ -207,10 +207,12 @@ marimo/_lsp/
 __marimo__/
 
 # ETF Screener (project specific)
-!data/output/.gitkeep   # keep folder structure
 
 # Project outputs
 data/output/*
+
+# keep folder structure
+!data/output/.gitkeep
 
 # IDE configs
 .idea/
