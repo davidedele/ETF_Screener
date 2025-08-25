@@ -9,12 +9,11 @@ from scipy.stats import skew as _skew, kurtosis as _kurtosis
 TRADING_DAYS = 252
 
 # ---------------------------
-# HELPERS
+# Helpers
 # ---------------------------
 
-
+#Return a 1-D Series (first column if DataFrame), or None.
 def _to_series(x: pd.Series | pd.DataFrame | None) -> Optional[pd.Series]:
-    #Return a 1-D Series (first column if DataFrame), or None.
     if x is None:
         return None
     if isinstance(x, pd.DataFrame):
@@ -23,13 +22,13 @@ def _to_series(x: pd.Series | pd.DataFrame | None) -> Optional[pd.Series]:
         return x.iloc[:, 0]
     return x
 
-
+#Align all inputs on the common date index and sort by date.
 def _align_on_common_index(
-    #Align all series on the common date index. Returns (prices_aligned, volumes_aligned, benchmark_series_aligned).
     prices: pd.DataFrame,
     volumes: Optional[pd.DataFrame] = None,
     benchmark: Optional[pd.Series | pd.DataFrame] = None,
 ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame], Optional[pd.Series]]:
+
     idx = prices.index
     if volumes is not None:
         idx = idx.intersection(volumes.index)
@@ -42,22 +41,17 @@ def _align_on_common_index(
     if volumes is not None:
         volumes = volumes.loc[idx].sort_index()
     if benchmark is not None:
-        benchmark = _to_series(benchmark)
-        if benchmark is not None:
-            benchmark = benchmark.loc[idx].sort_index()
-        else:
-            benchmark = None
+        b = _to_series(benchmark)
+        benchmark = b.loc[idx].sort_index() if b is not None else None
 
     return prices, volumes, benchmark  # type: ignore[return-value]
 
-
+#Daily log-returns for each column.
 def compute_log_returns(prices: pd.DataFrame) -> pd.DataFrame:
-    #Daily log-returns for each column.
     return np.log(prices / prices.shift(1)).dropna(how="all")
 
-
+#CAGR from first/last price and actual elapsed years.
 def cagr_from_prices(price_series: pd.Series) -> float:
-    #CAGR computed from first/last price and actual elapsed years.
     s = price_series.dropna()
     if s.shape[0] < 2:
         return np.nan
@@ -69,27 +63,25 @@ def cagr_from_prices(price_series: pd.Series) -> float:
         return np.nan
     return (end_price / start_price) ** (1.0 / years) - 1.0
 
-
+#Annualized volatility from daily returns.
 def annual_vol_from_returns(rets: pd.Series) -> float:
     r = rets.dropna()
     if r.empty:
         return np.nan
-    return float(r.std() * np.sqrt(TRADING_DAYS))
+    return float(r.std(ddof=1) * np.sqrt(TRADING_DAYS))
 
-
+#Annualized downside deviation (daily returns below MAR).
 def downside_vol_from_returns(rets: pd.Series, mar: float = 0.0) -> float:
-    #Downside deviation (daily), annualized.
     r = rets.dropna()
     if r.empty:
         return np.nan
     downside = r[r < mar]
     if downside.empty:
         return 0.0
-    return float(downside.std() * np.sqrt(TRADING_DAYS))
+    return float(downside.std(ddof=1) * np.sqrt(TRADING_DAYS))
 
-
+#Maximum drawdown as a negative number (e.g., -0.35).
 def max_drawdown(price_series: pd.Series) -> float:
-    #Maximum drawdown as a negative number (e.g., -0.35).
     s = price_series.dropna()
     if s.empty:
         return np.nan
@@ -97,15 +89,13 @@ def max_drawdown(price_series: pd.Series) -> float:
     dd = s / running_max - 1.0
     return float(dd.min())
 
-
+#Longest stretch (in days) spent under the previous peak."""
 def max_drawdown_duration_days(price_series: pd.Series) -> int:
-    #Longest stretch (in days) spent under the previous peak.
     s = price_series.dropna()
     if s.empty:
         return 0
     cummax = s.cummax()
     draw = s < cummax
-    # count consecutive Trues
     longest = cur = 0
     prev = False
     for v in draw:
@@ -117,59 +107,51 @@ def max_drawdown_duration_days(price_series: pd.Series) -> int:
         prev = v
     return int(longest)
 
-
+#Days from the most recent peak to recovery of that same peak. If not recovered by series end, returns NaN.
 def recovery_days_after_last_drawdown(price_series: pd.Series) -> float:
-    #Days from the most recent peak to recovery of that same peak. If not recovered by series end, returns NaN.
     s = price_series.dropna()
     if s.empty:
         return np.nan
     cummax = s.cummax()
-    # Find last peak index
+    # dates where a new peak was set
     peaks = cummax[cummax.diff().fillna(0) > 0]
     if peaks.empty:
-        # either monotonic non-increasing or flat; no peak progression
         return np.nan
     last_peak_date = peaks.index[-1]
     peak_val = float(cummax.loc[last_peak_date])
 
-    # Look forward from last_peak_date until price >= peak_val
     after = s.loc[last_peak_date:]
     recovered_idx = after[after >= peak_val].index
     if len(recovered_idx) == 0:
         return np.nan
-    # First date is the peak itself; the "recovery" is 0 days if equal day.
-    # Often we want recovery *after* it dips; handle gracefully:
     first_recovery_date = recovered_idx[0]
     return float((first_recovery_date - last_peak_date).days)
 
-
+#Annualized Sharpe ratio using daily returns.
 def sharpe_from_returns(rets: pd.Series, rf_daily: float = 0.0) -> float:
-    #Annualized Sharpe ratio using daily returns.
     r = rets.dropna()
     if r.empty:
         return np.nan
     ex = r - rf_daily
-    denom = ex.std()
+    denom = ex.std(ddof=1)
     if denom == 0 or np.isnan(denom):
         return np.nan
     return float(ex.mean() / denom * np.sqrt(TRADING_DAYS))
 
-
+#Annualized Sortino ratio using downside deviation.
 def sortino_from_returns(rets: pd.Series, rf_daily: float = 0.0) -> float:
-    #Annualized Sortino ratio using downside deviation.
     r = rets.dropna()
     if r.empty:
         return np.nan
     ex = r - rf_daily
     downside = ex[ex < 0]
-    denom = downside.std()
+    denom = downside.std(ddof=1)
     if denom == 0 or np.isnan(denom):
         return np.nan
     return float(ex.mean() / denom * np.sqrt(TRADING_DAYS))
 
-
+#Basic benchmark absolutes (CAGR, vol, max DD) for the benchmark itself."""
 def _single_price_metrics(series: pd.Series) -> Dict[str, float]:
-    #Basic benchmark metrics (CAGR, vol, max DD).
     s = series.dropna()
     if s.shape[0] < 2:
         return {"bench_cagr": np.nan, "bench_vol_ann": np.nan, "bench_max_dd": np.nan}
@@ -183,9 +165,8 @@ def _single_price_metrics(series: pd.Series) -> Dict[str, float]:
         "bench_max_dd": bench_max_dd,
     }
 
-
+#Beta, correlation, tracking error (annualized), information ratio. IR = annualized mean(excess) / TE, where excess = asset - benchmark (daily).
 def _beta_corr_te_ir(asset_rets: pd.Series, bench_rets: pd.Series) -> Dict[str, float]:
-    #Beta, correlation, tracking error (annualized), information ratio. IR = (annualized excess return) / TE
     a = asset_rets.dropna()
     b = bench_rets.dropna()
     common = a.index.intersection(b.index)
@@ -214,32 +195,27 @@ def _beta_corr_te_ir(asset_rets: pd.Series, bench_rets: pd.Series) -> Dict[str, 
 
     return {"beta": beta, "corr": corr, "te": te, "info_ratio": info_ratio}
 
-
 # ---------------------------
-# Public API
 # ---------------------------
 
+# Compute set of metrics for each column (ticker) in `prices`.
 def metrics_for_prices(
-
     prices: pd.DataFrame,
     volumes: Optional[pd.DataFrame] = None,
     benchmark: Optional[pd.Series | pd.DataFrame] = None,
     rf_daily: float = 0.0,
 ) -> pd.DataFrame:
     """
-    Compute a rich set of metrics for each column (ticker) in `prices`.
-    If `benchmark` is provided, includes:
-      - benchmark absolute metrics (bench_cagr, bench_vol_ann, bench_max_dd)
-      - relative metrics (excess_cagr, rel_vol, dd_gap)
-      - beta, corr, tracking error, information ratio
+    If benchmark  provided,  output also includes:
+      Absolute benchmark fields: bench_cagr, bench_vol_ann, bench_max_dd
+      Relative fields: excess_cagr, rel_vol, dd_gap
+      Tracking fields: beta, corr, te (tracking error), info_ratio
     """
-
+    # Normalize inputs
     if isinstance(prices, pd.Series):
         prices = prices.to_frame()
-
     if isinstance(volumes, pd.Series):
         volumes = volumes.to_frame()
-
     if prices is None or prices.empty:
         return pd.DataFrame()
 
@@ -251,7 +227,7 @@ def metrics_for_prices(
     if benchmark is not None:
         bench_rets = compute_log_returns(benchmark.to_frame()).iloc[:, 0]
 
-    # Benchmark absolute metrics (once)
+    # Absolute benchmark metrics
     bench_abs: Dict[str, float] = {}
     if benchmark is not None:
         bench_abs = _single_price_metrics(_to_series(benchmark))  # type: ignore[arg-type]
@@ -293,13 +269,12 @@ def metrics_for_prices(
         if volumes is not None:
             if col in volumes.columns:
                 avg_daily_volume = float(volumes[col].mean())
-            elif volumes.name == col:  # caso in cui volumes sia ancora una Series singola
+            elif getattr(volumes, "name", None) == col:
                 avg_daily_volume = float(volumes.mean())
             else:
                 avg_daily_volume = np.nan
         else:
             avg_daily_volume = np.nan
-
 
         row: Dict[str, float | str | int] = {
             "ticker": col,
@@ -323,7 +298,7 @@ def metrics_for_prices(
             "avg_daily_volume": avg_daily_volume,
         }
 
-        # Benchmark-dependent stuff
+        # Benchmark-dependent fields
         if bench_rets is not None:
             bc = bench_abs.get("bench_cagr", np.nan)
             bv = bench_abs.get("bench_vol_ann", np.nan)
@@ -340,30 +315,31 @@ def metrics_for_prices(
                 "dd_gap": (mdd - bd) if pd.notna(mdd) and pd.notna(bd) else np.nan,
             })
 
-            # Tracking metrics
-            bci = rets.index.intersection(bench_rets.index)
-            asset_r = r.loc[bci]
-            bench_r = bench_rets.loc[bci]
-            tr = _beta_corr_te_ir(asset_r, bench_r)
+            # Tracking metrics (beta, corr, te, info_ratio) — align asset & benchmark on common dates
+            a_aligned, b_aligned = r.align(bench_rets, join="inner")
+            tr = _beta_corr_te_ir(a_aligned, b_aligned)
             row.update(tr)
 
         out_rows.append(row)
 
     df = pd.DataFrame(out_rows)
-    # Sort by CAGR desc as a reasonable default
+    # Reasonable default ordering
     if "cagr" in df.columns:
         df = df.sort_values("cagr", ascending=False, na_position="last").reset_index(drop=True)
     return df
 
-
+#Split the all metrics table into themed packs for easier saving/reading. Returns a dict {pack_name: dataframe}.
 def split_metric_packs(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
-
-    #Split the big metrics table into themed packs for easier saving/reading.Returns dict of {pack_name: dataframe}.
-
     packs: Dict[str, List[str]] = {
-        "performance": ["ticker", "total_return", "cagr", "best_month", "worst_month", "bench_cagr", "excess_cagr"],
-        "risk": ["ticker", "vol_ann", "bench_vol_ann", "rel_vol", "max_dd", "bench_max_dd", "dd_gap",
-                 "dd_duration_days", "recovery_days", "downside_vol", "skew", "kurtosis"],
+        "performance": [
+            "ticker", "total_return", "cagr", "best_month", "worst_month",
+            "bench_cagr", "excess_cagr"
+        ],
+        "risk": [
+            "ticker", "vol_ann", "bench_vol_ann", "rel_vol",
+            "max_dd", "bench_max_dd", "dd_gap",
+            "dd_duration_days", "recovery_days", "downside_vol", "skew", "kurtosis"
+        ],
         "risk_adjusted": ["ticker", "sharpe", "sortino"],
         "tracking": ["ticker", "beta", "corr", "te", "info_ratio"],
         "liquidity": ["ticker", "avg_daily_volume"],

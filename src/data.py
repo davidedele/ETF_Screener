@@ -70,7 +70,7 @@ def find_ticker(symbol: str, start:str, end:str) -> str | None:
             return candidate
     return None
 
- #downloads data from YahooFinance without printing messages like  '1 Failed download: ...' and without FutureWarning/stacktrace
+ #downloads data from YahooFinance without printing messages like  Failed download and without FutureWarning/stacktrace
 def _silent_download(ticker: str, start: str, end: str) -> pd.DataFrame:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")  # ignore FutureWarning etc.
@@ -89,9 +89,8 @@ def _silent_download(ticker: str, start: str, end: str) -> pd.DataFrame:
                 # let unexpected errors arise
                 raise
 
-
+#return a 1 Dimension Panda Series even if x is a Dataframe with a single column.
 def _ensure_series(x):
-    #return a 1 Dimension Panda Series even if x is a Dataframe with a single column.
     if isinstance(x, pd.DataFrame): # if is a DataFrame, take the first column as a Series
         return x.iloc[:, 0]
     if isinstance(x, pd.Series):
@@ -100,10 +99,9 @@ def _ensure_series(x):
     # fallback: array/list → make it one dimension and make it a Series
     arr = np.asarray(x).reshape(-1)
     return pd.Series(arr)
-
+# download Historical data (from start, to end) of a given list of tickers.
+# Return two DataFrames (prices, volumes) with Date index and one column per ticker.
 def download_prices(tickers: list[str], start: str, end: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    # download Historical data (from start, to end) of a given list of tickers.
-    # always return two DataFrames (prices, volumes) with Date index and one column per ticker.
     all_closes: dict[str, pd.Series] = {}
     all_vols: dict[str, pd.Series] = {}
 

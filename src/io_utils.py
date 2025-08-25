@@ -1,31 +1,33 @@
 from pathlib import Path
 import pandas as pd
 
+#make sure a folder exists
 def ensure_dir(path: str | Path) -> Path:
     p = Path(path)
     p.mkdir(parents=True, exist_ok=True)
     return p
 
-def save_csv(df: pd.DataFrame, filename: str) -> None: #Save a DataFrame to CSV, creating directories if needed.
+#Save a DataFrame to CSV, creating directories if needed.
+def save_csv(df: pd.DataFrame, filename: str) -> None:
     import os
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     df.to_csv(filename, index=False)
 
-def load_csv(path: str) -> pd.DataFrame: #loads CSV file into a DataFrame
+#loads CSV file into a DataFrame
+def load_csv(path: str) -> pd.DataFrame:
     p = Path(path)
     if not p.exists():
-        raise FileNotFoundError(f"❌ File not found: {p}")
+        raise FileNotFoundError(f"File not found: {p}")
     df = pd.read_csv(p, index_col=0, parse_dates=True)
     print(f"CSV loaded from {p}")
     return df
 
-
+# create folder for each period in this format "YYYY-MM-DD_to_YYYY-MM-DD"
 def _period_folder(start: str, end: str) -> str:
-    # create folder for each period in this format "YYYY-MM-DD_to_YYYY-MM-DD"
     return f"{start}_to_{end}".replace(":", "-").strip()
 
+#saves 2 CSV for each ticker in a period folder data/output/<TICKER>/<start>_to_<end>/
 def save_period_for_ticker(
-    #saves 2 CSV for each ticker in a period folder data/output/<TICKER>/<start>_to_<end>/{prices.csv, volumes.csv}
     price_series: pd.Series,
     volume_series: pd.Series,
     out_base: str | Path,
@@ -52,8 +54,8 @@ def save_period_for_ticker(
 
     return prices_path, volumes_path
 
+#for each ticker in prices_df/volumes_df saves 2 CSV in data/output/<TICKER>/<period>
 def save_period_all_tickers(
-    #for each ticker in prices_df/volumes_df saves 2 CSV in data/output/<TICKER>/<period>
     prices_df: pd.DataFrame,
     volumes_df: pd.DataFrame,
     start: str,
