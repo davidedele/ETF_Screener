@@ -152,3 +152,6 @@ Now cli.py looks much more cleaner, maybe too much clean. I think I should check
 ## 26/08/25
 This day was dedicated to rewriting all the DEVLOG. 
 So if you see this, it means I finally remembered to push
+
+## 28/08/25
+Today was a pretty busy day so I just fixed a bug I found two days ago, now typing the same suffix more times, in the same command, will not give an error.
