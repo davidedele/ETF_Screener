@@ -101,6 +101,11 @@ def resolve_tickers_or_die(raw_tickers: list[str], start: str, end: str, *, quie
         typer.secho("No valid tickers found.", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
+    unique = remove_duplicates(resolved)
+    if len(unique) != len(resolved) and not quiet:
+        removed = [t for i, t in enumerate(resolved) if t not in unique[:unique.index(t)+1]]
+        typer.secho(f"Removed duplicate tickers. Using: {unique}", fg=typer.colors.YELLOW)
+
     if not quiet:
         typer.secho(f"Resolved tickers: {resolved}", fg=typer.colors.GREEN)
     return resolved
@@ -147,7 +152,22 @@ def filter_downloaded_or_die(
         typer.secho("After filtering, no valid tickers remain.", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
+    # Ensure unique columns
+    prices = prices.loc[:, ~prices.columns.duplicated(keep="first")]
+    if volumes is not None:
+        volumes = volumes.loc[:, ~volumes.columns.duplicated(keep="first")]
+
     return prices, volumes, downloaded
+
+#Return a new list with duplicates removed
+def remove_duplicates(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for x in items:
+        if x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
 
 
 # ---------------------------
