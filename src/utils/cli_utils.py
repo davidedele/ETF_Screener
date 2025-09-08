@@ -2,12 +2,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from pathlib import Path
 import typer
 import pandas as pd
 
 from src.data import download_prices, find_ticker
-from src.io_utils import ensure_dir, save_csv
+from src.utils.io_utils import ensure_dir, save_csv
 
 
 # Keep pack names here so cli.py can import a single constant.
@@ -17,26 +16,27 @@ PACK_NAMES: tuple[str, ...] = ("performance", "risk", "risk_adjusted", "tracking
 # ---------------------------
 # Paths & tokens
 # ---------------------------
-#Make a folder-friendly token: no slashes, compact, no dots/spaces.
+
+# Keep dots (.) in tickers, just sanitize slashes and spaces
 def safe_name(x: str) -> str:
-    return x.replace("/", "-").replace("\\", "-").replace(" ", "").replace(".", "")
+    return x.replace("/", "-").replace("\\", "-").replace(" ", "")
 
 #creates consistent folder/file name for a time period
 def period_token(start: str, end: str) -> str:
     return f"{start}_to_{end}"
 
-#data/output/<TICKER>/<START>_to_<END>
+#data/output/tickers/<TICKER>/<START>_to_<END>
 def ticker_period_dir(ticker: str, start: str, end: str) -> str:
-    return f"data/output/{ticker}/{period_token(start, end)}"
+    return f"data/output/tickers/{ticker}/{period_token(start, end)}"
 
-#data/output/<TICKER>/<START>_to_<END>/metrics
+#data/output/tickers/<TICKER>/<START>_to_<END>/metrics
 def ticker_metrics_dir(ticker: str, start: str, end: str) -> str:
     return f"{ticker_period_dir(ticker, start, end)}/metrics"
 
-#Return comparison output dir and the combo token (Multi-Ticket).
+#Return comparison output dir and the combo token (Multi-Ticker).
 def comparison_dir(resolved_tickers: list[str], start: str, end: str) -> tuple[str, str]:
     combo = "-".join(safe_name(t) for t in sorted(resolved_tickers))
-    path = f"data/output/comparisons/{combo}/metrics_{period_token(start, end)}"
+    path = f"data/output/comparison/{combo}/metrics_{period_token(start, end)}"
     return path, combo
 
 #data/output/all_tickers/<START>_to_<END>
