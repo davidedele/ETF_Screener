@@ -155,3 +155,56 @@ So if you see this, it means I finally remembered to push
 
 ## 28/08/25
 Today was a pretty busy day so I just fixed a bug I found two days ago, now typing the same suffix more times, in the same command, will not give an error.
+
+## 08/09/25
+I started working on this update a while ago but I didn't update the DEVLOG nor pushed the changes.
+I updated again the folder structure, now is like:
+
+```console
+data/output/
+  all_tickers/
+    2022-01-01_to_2023-01-01/metrics_all.csv
+  comparisons/
+    VWCE.DE-CSPX.L/
+      metrics_2022-01-01_to_2023-01-01/all.csv
+  tickers/
+    VWCE.DE/
+      screen.csv
+      2022-01-01_to_2023-01-01/
+        prices.csv
+        volumes.csv
+        metrics/all.csv
+    CSPX.L/
+      screen.csv
+      2022-01-01_to_2023-01-01/
+        prices.csv
+        volumes.csv
+        metrics/all.csv
+```
+
+Then I also added the `screen` function, this function saves a general snapshot of an ETF with basic metadata (name, exchange, currency, family, expense ratio, assets under management, ISIN, etc.) 
+
+| Field                  | Description |
+|-------------------------|-------------|
+| **ticker**             | Ticker symbol (with suffix) |
+| **shortName**          | Common short name |
+| **longName**           | Full legal name |
+| **quoteType**          | Asset type (e.g., ETF) |
+| **category**           | Category / fund type |
+| **fundFamily**         | Fund family (e.g., Vanguard, iShares) |
+| **exchange**           | Exchange name |
+| **currency**           | Trading currency |
+| **expenseRatio**       | Expense ratio (if available) |
+| **totalAssets**        | Fund total assets |
+| **sharesOutstanding**  | Shares outstanding |
+| **isin**               | ISIN identifier |
+| **symbol**             | Exchange symbol |
+| **firstTradeDate**     | First trading date |
+| **inceptionDate**      | Fund inception date |
+| **domicile**           | Fund domicile |
+
+This is an example of what a `screen.csv` file may look like:
+
+| ticker   | shortName                       | longName                                         | quoteType | fundFamily                        | exchange | currency | expenseRatio | totalAssets   | sharesOutstanding | isin        | symbol  | firstTradeDate | inceptionDate | domicile |
+|----------|---------------------------------|-------------------------------------------------|-----------|-----------------------------------|----------|----------|--------------|---------------|-------------------|-------------|---------|----------------|---------------|----------|
+| VWCE.DE  | Vanguard FTSE All-World U.ETF R | Vanguard FTSE All-World UCITS ETF USD Accumulation | ETF       | Vanguard Group (Ireland) Limited | XETRA    | EUR      | —            | 43,725,316,096 | —                 | DE000A2PKXG9 | VWCE.DE | 2019-07-29     | 2019-07-23    | IE       |
